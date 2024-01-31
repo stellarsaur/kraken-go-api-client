@@ -168,23 +168,21 @@ func (api *KrakenAPI) Ticker(pairs ...string) (*TickerResponse, error) {
 
 // OHLCWithInterval returns a OHLCResponse struct based on the given pair
 func (api *KrakenAPI) OHLCWithInterval(pair string, interval string) (*OHLCResponse, error) {
-	urlValue := url.Values{}
-	urlValue.Add("pair", pair)
-
 	if interval == "" {
-		urlValue.Add("interval", "1")
+		interval = "1"
 	} else {
 		switch interval {
 		// supported values https://www.kraken.com/features/api#get-ohlc-data
 		case "1", "5", "15", "30", "60", "240", "1440", "10080", "21600":
-			urlValue.Add("interval", interval)
+			break
 		default:
 			return nil, fmt.Errorf("Unsupported value for Interval: " + interval)
 		}
 	}
+	methodUrl := fmt.Sprintf("OHLC?pair=%s&interval=%s", pair, interval)
 
 	// Returns a map[string]interface{} as an interface{}
-	interfaceResponse, err := api.queryPublic("OHLC", urlValue, nil)
+	interfaceResponse, err := api.queryPublic(methodUrl, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -248,10 +246,12 @@ func (api *KrakenAPI) TradesHistory(start int64, end int64, args map[string]stri
 // Trades returns the recent trades for given pair
 func (api *KrakenAPI) Trades(pair string, since int64) (*TradesResponse, error) {
 	values := url.Values{"pair": {pair}}
+	sinceStr := "0"
 	if since > 0 {
-		values.Set("since", strconv.FormatInt(since, 10))
+		sinceStr = strconv.FormatInt(since, 10)
 	}
-	resp, err := api.queryPublic("Trades", values, nil)
+	methodUrl := fmt.Sprintf("Trades?pair=%s&since=%s", pair, sinceStr)
+	resp, err := api.queryPublic(methodUrl, values, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -393,9 +393,8 @@ func (api *KrakenAPI) ClosedOrders(args map[string]string) (*ClosedOrdersRespons
 // Depth returns the order book for given pair and orders count.
 func (api *KrakenAPI) Depth(pair string, count int) (*OrderBook, error) {
 	dr := DepthResponse{}
-	_, err := api.queryPublic("Depth", url.Values{
-		"pair": {pair}, "count": {strconv.Itoa(count)},
-	}, &dr)
+	methodUrl := fmt.Sprintf("Depth?pair=%s&count=%d", pair, count)
+	_, err := api.queryPublic(methodUrl, nil, &dr)
 
 	if err != nil {
 		return nil, err
